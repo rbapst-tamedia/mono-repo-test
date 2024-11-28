@@ -69,6 +69,8 @@ jobs:
         with:
           terraform_version: "1.10"
       - run: |
+          find . -ls
+          cd deploy/frontend
           terraform init
           terraform plan
 
