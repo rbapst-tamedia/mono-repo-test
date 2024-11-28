@@ -62,14 +62,14 @@ jobs:
         with:
           fetch-depth: 0
       - uses: actions/download-artifact@v4
-        env:
-          GH_ARTIFACT_PATH: artifacts
-          GH_ARTIFACT_NAME: frontend-static-${{ matrix.environment }}
+        with:
+          path: artifacts
+          name: frontend-static-${{ matrix.environment }}
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.10"
       - run: |
-          find . -ls
+          find . -ls -depth 3 -prune
           cd deploy/frontend
           terraform init
           terraform plan
