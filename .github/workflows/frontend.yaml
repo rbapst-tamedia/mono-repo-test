@@ -1,0 +1,103 @@
+name: Frontend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/frontend.yaml
+      - deploy/frontend/**
+      - frontend/**
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/frontend.yaml
+      - deploy/frontend/**
+      - frontend/**
+  workflow_dispatch:
+  release:
+    types: [released]
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  build_static:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: [sandbox]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          cd frontend
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install -r requirements.txt
+          cd ..
+      - uses: actions/upload-artifact@v4
+        name: Store static files for subsequent terraform apply
+        with:
+          name: frontend-static-${{ matrix.environment }}
+          path: ${{ github.workspace }}/frontend/.venv
+          include-hidden-files: true
+          if-no-files-found: error # fail on no files found
+
+  plan:
+    if: github.event_name == 'pull_request'
+    needs: build_static
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [sandbox]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          name: frontend-static-${{ matrix.environment }}
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.10"
+      - run: |
+          find . -ls -maxdepth 3 -prune
+          cd deploy/frontend
+          terraform init
+          terraform plan
+
+  apply:
+    if: github.ref_name == github.event.repository.default_branch && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs: build_static
+    strategy:
+      fail-fast: true
+      max-parallel: 1
+      matrix:
+        environment: [sandbox]
+    uses: tx-pts-dai/github-workflows/.github/workflows/tf-apply.yaml@v1
+    with:
+      gh_artifact_name: frontend-static-${{ matrix.environment }}
+      gh_artifact_path: artifacts
+      environment: frontend-${{ matrix.environment }}
+
+  apply_prod:
+    if: github.event_name == 'release'
+    needs: build_static
+    strategy:
+      fail-fast: true
+      max-parallel: 1
+      matrix:
+        environment: [sandbox]
+    uses: tx-pts-dai/github-workflows/.github/workflows/tf-apply.yaml@v1
+    with:
+      gh_artifact_name: frontend-static-${{ matrix.environment }}
+      gh_artifact_path: artifacts
+      environment: frontend-${{ matrix.environment }}
