@@ -16,7 +16,7 @@ data "local_file" "main_tf" {
 }
 
 data "local_file" "venv_flask" {
-  filename = "${path.module}/../../frontend/.venv/bin/flask"
+  filename = "${path.module}/../../artifacts/bin/flask"
 }
 
 output "main" {

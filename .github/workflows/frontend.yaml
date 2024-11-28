@@ -69,7 +69,7 @@ jobs:
         with:
           terraform_version: "1.10"
       - run: |
-          find . -ls -depth 3 -prune
+          find . -ls -maxdepth 3 -prune
           cd deploy/frontend
           terraform init
           terraform plan
