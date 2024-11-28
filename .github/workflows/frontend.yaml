@@ -55,11 +55,20 @@ jobs:
       fail-fast: false
       matrix:
         environment: [sandbox]
-    uses: tx-pts-dai/github-workflows/.github/workflows/tf-plan.yaml@v1
-    with:
-      gh_artifact_name: frontend-static-${{ matrix.environment }}
-      gh_artifact_path: artifacts
-      environment: frontend-${{ matrix.environment }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        env:
+          GH_ARTIFACT_PATH: artifacts
+          GH_ARTIFACT_NAME: frontend-static-${{ matrix.environment }}
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.10"
+      - run: |
+          terraform init
+          terraform plan
 
   apply:
     if: github.ref_name == github.event.repository.default_branch && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
